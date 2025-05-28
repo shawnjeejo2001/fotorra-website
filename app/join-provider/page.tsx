@@ -65,6 +65,7 @@ export default function JoinProviderPage() {
   const [userType, setUserType] = useState("client")
   const [service, setService] = useState("")
   const [name, setName] = useState("")
+  const [email, setEmail] = useState("") // Added email field
   const [dob, setDob] = useState("")
   const [mainStyle, setMainStyle] = useState("")
   const [additionalStyle1, setAdditionalStyle1] = useState("")
@@ -185,9 +186,10 @@ export default function JoinProviderPage() {
       const formData = new FormData()
 
       // Add text fields
-      formData.append("userType", userType)
+      formData.append("userType", "provider") // Force provider type
       formData.append("service", service)
       formData.append("name", name)
+      formData.append("email", email) // Add email
       formData.append("dob", dob)
       formData.append("mainStyle", mainStyle)
       formData.append("additionalStyle1", additionalStyle1 === "none" ? "" : additionalStyle1 || "")
@@ -336,6 +338,17 @@ export default function JoinProviderPage() {
               </div>
 
               <div>
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                />
+              </div>
+
+              <div>
                 <Label htmlFor="dob">Date of Birth *</Label>
                 <Input id="dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
               </div>
@@ -349,7 +362,7 @@ export default function JoinProviderPage() {
                 <Button variant="outline" onClick={() => setStep(1)}>
                   Back
                 </Button>
-                <Button onClick={() => setStep(3)} disabled={!name || !dob || !location}>
+                <Button onClick={() => setStep(3)} disabled={!name || !email || !dob || !location}>
                   Continue
                 </Button>
               </div>
