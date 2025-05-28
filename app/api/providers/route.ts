@@ -2,90 +2,120 @@ import { type NextRequest, NextResponse } from "next/server"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { existsSync } from "fs"
-
-// In-memory storage for demo purposes
-// In production, you'd use a database like PostgreSQL, MongoDB, etc.
-const providers: any[] = []
+import { query } from "@/lib/database"
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
 
     // Extract form fields
-    const providerData = {
-      id: Date.now().toString(), // Simple ID generation
-      userType: formData.get("userType") as string,
-      service: formData.get("service") as string,
+    const userData = {
+      email: (formData.get("email") as string) || `temp_${Date.now()}@example.com`, // You'll need to add email field to form
       name: formData.get("name") as string,
-      dob: formData.get("dob") as string,
+      userType: formData.get("userType") as string,
+    }
+
+    const providerData = {
+      service: formData.get("service") as string,
       mainStyle: formData.get("mainStyle") as string,
-      additionalStyle1: formData.get("additionalStyle1") as string,
-      additionalStyle2: formData.get("additionalStyle2") as string,
+      additionalStyles: {
+        style1: formData.get("additionalStyle1") as string,
+        style2: formData.get("additionalStyle2") as string,
+      },
       location: formData.get("location") as string,
-      portfolioFiles: [] as string[],
-      profileImage: "", // Will store the main profile/portfolio image
-      registrationDate: new Date().toISOString(),
-      status: "pending", // pending, approved, rejected
+      aboutText: formData.get("aboutText") as string,
     }
 
-    // Handle file uploads
-    const uploadDir = join(process.cwd(), "public", "uploads", providerData.id)
+    // Start a transaction
+    await query("BEGIN")
 
-    // Create upload directory if it doesn't exist
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
+    try {
+      // 1. Insert user first
+      const userResult = await query(
+        `INSERT INTO users (email, name, user_type) 
+         VALUES ($1, $2, $3) 
+         RETURNING id`,
+        [userData.email, userData.name, userData.userType],
+      )
 
-    // Process uploaded files
-    const portfolioFiles: string[] = []
-    let profileImagePath = ""
+      const userId = userResult.rows[0].id
 
-    for (const [key, value] of formData.entries()) {
-      if (key.startsWith("portfolio_") && value instanceof File) {
-        const file = value as File
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
+      // 2. Insert provider
+      const providerResult = await query(
+        `INSERT INTO providers (user_id, service, main_style, additional_styles, location, about_text, status) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) 
+         RETURNING id`,
+        [
+          userId,
+          providerData.service,
+          providerData.mainStyle,
+          JSON.stringify(providerData.additionalStyles),
+          providerData.location,
+          providerData.aboutText,
+          "pending",
+        ],
+      )
 
-        // Generate unique filename
-        const filename = `${Date.now()}_${file.name}`
-        const filepath = join(uploadDir, filename)
+      const providerId = providerResult.rows[0].id
 
-        // Save file
-        await writeFile(filepath, buffer)
+      // 3. Handle file uploads
+      const uploadDir = join(process.cwd(), "public", "uploads", providerId)
 
-        // Store relative path for database
-        const relativePath = `/uploads/${providerData.id}/${filename}`
-        portfolioFiles.push(relativePath)
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
 
-        // Use the first uploaded image as the profile image for hover preview
-        if (!profileImagePath) {
-          profileImagePath = relativePath
+      // Process uploaded files
+      const portfolioFiles: string[] = []
+
+      for (const [key, value] of formData.entries()) {
+        if (key.startsWith("portfolio_") && value instanceof File) {
+          const file = value as File
+          const bytes = await file.arrayBuffer()
+          const buffer = Buffer.from(bytes)
+
+          // Generate unique filename
+          const filename = `${Date.now()}_${file.name}`
+          const filepath = join(uploadDir, filename)
+
+          // Save file
+          await writeFile(filepath, buffer)
+
+          // Store relative path
+          const relativePath = `/uploads/${providerId}/${filename}`
+          portfolioFiles.push(relativePath)
+
+          // 4. Insert portfolio image record
+          await query(
+            `INSERT INTO portfolio_images (provider_id, image_url, original_filename) 
+             VALUES ($1, $2, $3)`,
+            [providerId, relativePath, file.name],
+          )
         }
       }
+
+      // Commit transaction
+      await query("COMMIT")
+
+      console.log("New provider registered:", {
+        userId,
+        providerId,
+        name: userData.name,
+        service: providerData.service,
+        filesUploaded: portfolioFiles.length,
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: "Provider registered successfully",
+        providerId: providerId,
+        userId: userId,
+      })
+    } catch (error) {
+      // Rollback transaction on error
+      await query("ROLLBACK")
+      throw error
     }
-
-    providerData.portfolioFiles = portfolioFiles
-    providerData.profileImage = profileImagePath
-
-    // Save to in-memory storage (replace with database in production)
-    providers.push(providerData)
-
-    console.log("New provider registered:", {
-      id: providerData.id,
-      name: providerData.name,
-      service: providerData.service,
-      mainStyle: providerData.mainStyle,
-      location: providerData.location,
-      filesUploaded: portfolioFiles.length,
-      profileImage: profileImagePath,
-    })
-
-    return NextResponse.json({
-      success: true,
-      message: "Provider registered successfully",
-      providerId: providerData.id,
-      profileImage: profileImagePath,
-    })
   } catch (error) {
     console.error("Error processing provider registration:", error)
     return NextResponse.json({ success: false, message: "Failed to register provider" }, { status: 500 })
@@ -93,6 +123,35 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  // Return all providers (for admin purposes)
-  return NextResponse.json({ providers })
+  try {
+    // Get all providers with user info
+    const result = await query(`
+      SELECT 
+        p.*,
+        u.name,
+        u.email,
+        u.profile_image_url,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pi.id,
+              'image_url', pi.image_url,
+              'original_filename', pi.original_filename
+            )
+          ) FILTER (WHERE pi.id IS NOT NULL), 
+          '[]'
+        ) as portfolio_images
+      FROM providers p
+      JOIN users u ON p.user_id = u.id
+      LEFT JOIN portfolio_images pi ON p.id = pi.provider_id
+      GROUP BY p.id, u.id
+      ORDER BY p.created_at DESC
+    `)
+
+    return NextResponse.json({ providers: result.rows })
+  } catch (error) {
+    console.error("Error fetching providers:", error)
+    return NextResponse.json({ success: false, message: "Failed to fetch providers" }, { status: 500 })
+  }
 }
+
