@@ -22,7 +22,7 @@ export default function AboutPage() {
               onClick={() => router.push("/")}
               className="text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors"
             >
-              Fotorra
+              fotochi
             </button>
           </div>
         </div>
@@ -31,7 +31,7 @@ export default function AboutPage() {
       <main className="max-w-4xl mx-auto px-4 py-12">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">About Fotorra</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-6">About fotochi</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             We're on a mission to connect clients with the perfect photographers and videographers, making professional
             photography accessible to everyone.
@@ -73,7 +73,7 @@ export default function AboutPage() {
             <h2 className="text-3xl font-bold mb-6">Our Story</h2>
             <div className="prose prose-lg max-w-none text-gray-600">
               <p>
-                Fotorra was born from a simple observation: finding the right photographer for your special moments
+                fotochi was born from a simple observation: finding the right photographer for your special moments
                 shouldn't be complicated. Whether you're planning a wedding, celebrating a milestone, or building your
                 business brand, photography plays a crucial role in preserving those memories.
               </p>
@@ -83,7 +83,7 @@ export default function AboutPage() {
                 a platform that benefits both sides of the equation.
               </p>
               <p>
-                Today, Fotorra serves as a bridge between creativity and opportunity, helping thousands of clients find
+                Today, fotochi serves as a bridge between creativity and opportunity, helping thousands of clients find
                 their perfect match while empowering photographers to grow their businesses and showcase their unique
                 talents.
               </p>
@@ -135,7 +135,7 @@ export default function AboutPage() {
           <CardContent className="p-8 text-center">
             <h2 className="text-2xl font-bold mb-4">Ready to Get Started?</h2>
             <p className="text-gray-600 mb-6">
-              Join thousands of clients and photographers who trust Fotorra for their photography needs.
+              Join thousands of clients and photographers who trust fotochi for their photography needs.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button onClick={() => router.push("/")} size="lg">
