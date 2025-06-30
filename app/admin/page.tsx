@@ -129,7 +129,7 @@ export default function AdminPage() {
                 <Shield className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Fotorra Admin</h1>
+                <h1 className="text-2xl font-bold text-gray-900">fotochi Admin</h1>
                 <p className="text-sm text-gray-600">Provider Applications Dashboard</p>
               </div>
             </div>
