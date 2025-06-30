@@ -110,7 +110,7 @@ export default function BookingPage() {
               onClick={() => router.push("/")}
               className="text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors"
             >
-              Fotorra
+              fotochi
             </button>
           </div>
         </div>
